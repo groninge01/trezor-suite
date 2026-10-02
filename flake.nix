@@ -101,11 +101,13 @@
         '';
 
         welcomeMessage = ''
-          echo "welcome to the Trezor Suite development environment"
-          echo "- Node.js $(node --version)"
-          echo "- npm $(npm --version)"
-          echo "- Yarn $(yarn --version)"
-          echo "- Playwright $(playwright --version)"
+          if [[ $- == *i* ]]; then
+            echo "welcome to the Trezor Suite development environment"
+            echo "- Node.js $(node --version)"
+            echo "- npm $(npm --version)"
+            echo "- Yarn $(yarn --version)"
+            echo "- Playwright $(playwright --version)"
+          fi
         '';
 
       in
