@@ -76,11 +76,5 @@ rec {
 
       echo "✓ Created Android emulator device: Pixel_6_API_34"
     fi
-
-    if [[ $- == *i* ]]; then
-      echo "- Java $(java -version 2>&1 | head -n1)"
-      command -v adb >/dev/null 2>&1 && echo "- adb $(adb version | head -n1)" || echo "- adb not found (install SDK packages)"
-      command -v emulator >/dev/null 2>&1 && echo "- emulator $(emulator -version | head -n1)" || echo "- emulator not found"
-    fi
   '';
 }

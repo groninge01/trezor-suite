@@ -100,16 +100,6 @@
           export npm_config_build_from_source=true
         '';
 
-        welcomeMessage = ''
-          if [[ $- == *i* ]]; then
-            echo "welcome to the Trezor Suite development environment"
-            echo "- Node.js $(node --version)"
-            echo "- npm $(npm --version)"
-            echo "- Yarn $(yarn --version)"
-            echo "- Playwright $(playwright --version)"
-          fi
-        '';
-
       in
       {
         devShells =
@@ -125,8 +115,7 @@
 
               shellHook = commonShellHook
                 + androidEnv.nixLdHook
-                + androidEnv.shellHook
-                + welcomeMessage;
+                + androidEnv.shellHook;
             };
           in
           {
@@ -134,7 +123,7 @@
               buildInputs = commonBuildInputs;
               NIX_PATCHELF_LIBRARY_PATH = "${pkgs.openssl.out}/lib:${pkgs.zlib}/lib:${pkgs.gcc.cc.lib}/lib";
               NIX_CC = "${pkgs.gcc}";
-              shellHook = commonShellHook + welcomeMessage;
+              shellHook = commonShellHook;
             };
 
             android = androidShell;
