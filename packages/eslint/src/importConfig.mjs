@@ -66,7 +66,11 @@ export const selectorRestrictedImports = [
  */
 /** @type {Config} */
 export const desktopApiCompositionRootAllowance = {
-    files: ['**/preload.ts', '**/createSuiteDesktopCompositionRoot.ts'],
+    files: [
+        '**/preload.ts',
+        '**/createSuiteDesktopCompositionRoot.ts',
+        '**/createMiniCompositionRoot.ts',
+    ],
     rules: {
         'no-restricted-imports': ['error', { paths: selectorRestrictedImports }],
     },

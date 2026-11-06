@@ -1,0 +1,26 @@
+import { contextBridge, ipcRenderer } from 'electron';
+
+import { createDesktopApiBridge } from '@suite/desktop-app-api-electron';
+import { exposeIpcProxy } from '@trezor/ipc-proxy';
+
+import { hasSwitch } from './libs/process-switches';
+
+const cspNonce = process.argv
+    .find(p => p.startsWith('--csp-nonce'))
+    ?.replace('--csp-nonce=', '')
+    ?.trim();
+
+contextBridge.exposeInMainWorld('cspNonce', cspNonce);
+
+contextBridge.exposeInMainWorld(...exposeIpcProxy(ipcRenderer, ['Bluetooth', 'TrezorConnect']));
+
+const desktopApi = createDesktopApiBridge(ipcRenderer);
+contextBridge.exposeInMainWorld('desktopApi', desktopApi);
+contextBridge.exposeInMainWorld('desktopFlags', {
+    exposeStore: hasSwitch('expose-store'),
+});
+
+contextBridge.exposeInMainWorld('electronFind', {
+    onShow: (callback: () => void) => ipcRenderer.on('find:show', callback),
+    offShow: (callback: () => void) => ipcRenderer.removeListener('find:show', callback),
+});

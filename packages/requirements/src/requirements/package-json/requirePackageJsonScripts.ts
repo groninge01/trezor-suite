@@ -50,6 +50,7 @@ const REQUIRED_SCRIPTS: Record<string, RequiredScriptConfig> = {
         command: /^yarn g:tsc --build.*$/,
         ignoredPackages: [
             '@suite-app/desktop-app',
+            '@suite-mini/desktop-app',
             'connect-example-electron-main',
             'connect-mobile-example',
             'connect-example-node',

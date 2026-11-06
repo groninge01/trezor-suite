@@ -1,0 +1,201 @@
+name: "[Build] suite-mini desktop apps"
+
+on:
+  push:
+    branches:
+      - release
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+  workflow_dispatch:
+    inputs:
+      linux:
+        description: "Build Linux"
+        type: boolean
+        default: true
+      mac:
+        description: "Build macOS"
+        type: boolean
+        default: true
+      win:
+        description: "Build Windows"
+        type: boolean
+        default: true
+
+env:
+  DESKTOP_APP_NAME: "suite-mini"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # An optimization needed to save RAM on the macOS runner, which is most constrained: build the Webpack Renderer bundle only once in Linux.
+  # The Renderer bundle is the heaviest part of the build, and also the only part which can be safely shared (not platform dependent).
+  build-and-cache-renderer:
+    if: >-
+      (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/release')) &&
+      (github.event_name != 'workflow_dispatch' || inputs.linux || inputs.mac)
+    name: Build and cache Electron Renderer process bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          lfs: true
+      - name: Install node and yarn
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: ".nvmrc"
+      - name: Restore develop Yarn cache
+        uses: ./.github/actions/restore-yarn-cache
+      - name: Install deps and build libs
+        run: |
+          yarn workspaces focus trezor-suite @suite-mini/desktop-app-renderer @trezor/suite @suite/app-assets @trezor/transport-bridge @suite-common/message-system
+          yarn message-system-sign-config
+          yarn workspace @suite/app-assets build:lib
+          yarn workspace @trezor/transport-bridge build:lib
+      - name: Build Electron Renderer bundle
+        run: yarn workspace @suite-mini/desktop-app-renderer build
+      - name: Cache Electron renderer bundle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: suite-mini/desktop-app/build
+          key: mini-renderer-bundle-${{ github.sha }}
+
+  suite-mini-desktop:
+    if: >-
+      (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/release')) &&
+      (github.event_name != 'workflow_dispatch' || inputs.linux || inputs.mac)
+    name: Build suite-mini-desktop-${{ matrix.platform }}
+    needs: build-and-cache-renderer
+    runs-on: ${{ matrix.platform == 'mac' && 'macos-15' || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux, mac]
+        # no `include` here: it would re-add excluded platforms as new combinations
+        # on workflow_dispatch, skip platforms which were not selected ('none' matches nothing)
+        exclude:
+          - platform: ${{ github.event_name == 'workflow_dispatch' && !inputs.linux && 'linux' || 'none' }}
+          - platform: ${{ github.event_name == 'workflow_dispatch' && !inputs.mac && 'mac' || 'none' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          lfs: true
+      - name: Install node and yarn
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Restore develop Yarn cache
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/restore-yarn-cache
+
+      - name: Restore Electron renderer bundle
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: suite-mini/desktop-app/build
+          key: mini-renderer-bundle-${{ github.sha }}
+          fail-on-cache-miss: true
+
+      - name: Install native binaries for every target architecture
+        uses: ./.github/actions/yarn-target-architectures
+        with:
+          platform: ${{ matrix.platform }}
+
+      - name: Install deps and build libs
+        run: |
+          yarn workspaces focus trezor-suite @suite-mini/desktop-app @suite-mini/desktop-app-renderer @suite-mini/desktop-app-main @trezor/suite @suite/app-assets @trezor/transport-bridge @suite-common/message-system
+          yarn message-system-sign-config
+          yarn workspace @suite/app-assets build:lib
+          yarn workspace @trezor/transport-bridge build:lib
+
+      - name: Build ${{ matrix.platform }} suite-mini-desktop
+        env:
+          CSC_FOR_PULL_REQUEST: ${{ matrix.platform == 'mac' && 'true' || 'false' }}
+        run: |
+          yarn workspace @suite-mini/desktop-app build:app
+          if [ "${{ matrix.platform }}" = "mac" ]; then
+            # One electron-builder run per arch: in a combined run, the x64 DMG is created while the arm64 app is
+            # being packaged and signed, and on GitHub macOS runners its `hdiutil create`/`attach` then intermittently
+            # fails with "Device not configured" (since electron-builder 27). latest-mac.yml lists only arm64 here.
+            yarn workspace @suite-mini/desktop-app build:app:electron --publish never --mac --x64
+            yarn workspace @suite-mini/desktop-app build:app:electron --publish never --mac --arm64
+          else
+            yarn workspace @suite-mini/desktop-app build:app:electron:${{ matrix.platform }}
+          fi
+          bash suite-mini/desktop-app-main/scripts/gnupg-sign.sh
+          mv suite-mini/desktop-app/build-electron/* .
+
+      - name: Upload suite-mini-desktop production artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: suite-mini-desktop-${{ matrix.platform }}
+          path: |
+            suite-mini-*
+            latest*.yml
+          retention-days: 14
+
+      - name: Upload suite-mini-desktop mac-arm artifact
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: suite-mini-desktop-mac-arm-dmg
+          path: |
+            suite-mini-*-mac-arm64.dmg
+          retention-days: 14
+
+  suite-mini-desktop-win:
+    if: >-
+      (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/release')) &&
+      (github.event_name != 'workflow_dispatch' || inputs.win)
+    name: Build suite-mini-desktop-win
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      platform: win
+    container:
+      image: electronuserland/builder:22-wine-10.26@sha256:7e725c402e1a950b901263107da1c63afae9a2db02d5eed97102bd68f0decb59
+      options: --user 1001
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          lfs: true
+      - name: Install node and yarn
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install native binaries for every target architecture
+        uses: ./.github/actions/yarn-target-architectures
+        with:
+          platform: ${{ env.platform }}
+
+      - name: Install deps and build libs
+        run: |
+          yarn workspaces focus trezor-suite @suite-mini/desktop-app @suite-mini/desktop-app-renderer @suite-mini/desktop-app-main @trezor/suite @suite/app-assets @trezor/transport-bridge @suite-common/message-system
+          yarn message-system-sign-config
+
+      - name: Build libs
+        run: |
+          yarn workspace @suite/app-assets build:lib
+          yarn workspace @trezor/transport-bridge build:lib
+
+      - name: Build ${{env.platform}} suite-mini-desktop
+        run: |
+          yarn workspace @suite-mini/desktop-app build:${{env.platform}}
+          bash suite-mini/desktop-app-main/scripts/gnupg-sign.sh
+          mv suite-mini/desktop-app/build-electron/* .
+
+      - name: Upload suite-mini-desktop production artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: suite-mini-desktop-${{env.platform}}
+          path: |
+            suite-mini-*
+            latest*.yml
+          retention-days: 14

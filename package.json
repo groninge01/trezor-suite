@@ -19,6 +19,7 @@
             "suite-common/*",
             "suite/*",
             "suite-app/*",
+            "suite-mini/*",
             "scripts"
         ]
     },

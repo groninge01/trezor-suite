@@ -1,0 +1,62 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "libDev",
+        "paths": {
+            "src/*": [
+                "../../packages/suite/src/*"
+            ]
+        }
+    },
+    "include": [
+        ".",
+        "../../packages/suite/global.d.ts"
+    ],
+    "references": [
+        {
+            "path": "../../suite-common/analytics-redux"
+        },
+        {
+            "path": "../../suite-common/firmware-authenticity"
+        },
+        {
+            "path": "../../suite-common/message-system"
+        },
+        { "path": "../../suite-common/networks" },
+        {
+            "path": "../../suite-common/react-query"
+        },
+        {
+            "path": "../../suite/authenticity-checks"
+        },
+        { "path": "../../suite/debug" },
+        { "path": "../../suite/desktop-app-api" },
+        {
+            "path": "../../suite/desktop-app-api-electron"
+        },
+        { "path": "../../suite/device" },
+        { "path": "../../suite/message-system" },
+        {
+            "path": "../../suite/platform-encryption-electron"
+        },
+        { "path": "../../suite/router" },
+        { "path": "../../suite/tor-desktop" },
+        { "path": "../../packages/components" },
+        {
+            "path": "../../packages/connect-electron"
+        },
+        {
+            "path": "../../packages/dependency-injection"
+        },
+        {
+            "path": "../../networks/ethereum/network-ethereum-suite-common"
+        },
+        { "path": "../../packages/redux-utils" },
+        { "path": "../../packages/suite" },
+        { "path": "../../packages/theme" },
+        { "path": "../../suite-common/flags" },
+        {
+            "path": "../../suite-common/suite-config"
+        }
+    ]
+}
