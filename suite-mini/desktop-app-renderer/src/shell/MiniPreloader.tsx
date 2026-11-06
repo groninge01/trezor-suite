@@ -136,7 +136,7 @@ export const MiniPreloader = memo(function MiniPreloaderComponent({ children }: 
 
     if (isInteractiveDeviceChecksFlowDisplayed) {
         return (
-            <WelcomeLayoutWithoutModalSwitcher>
+            <WelcomeLayoutWithoutModalSwitcher hideSidebar>
                 <InteractiveDeviceChecksFlow
                     isAuthenticityCheckStepActive={isAuthenticityCheckStepActive}
                     setIsAuthenticityCheckStepActive={setIsAuthenticityCheckStepActive}
@@ -157,7 +157,7 @@ export const MiniPreloader = memo(function MiniPreloaderComponent({ children }: 
     // display prerequisite for regular application as page view
     if (prerequisite !== null) {
         return (
-            <WelcomeLayout showAccounts={false}>
+            <WelcomeLayout showAccounts={false} hideSidebar>
                 <Card paddingType="large">
                     <PrerequisitesGuide />
                 </Card>
