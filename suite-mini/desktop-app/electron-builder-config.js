@@ -80,6 +80,9 @@ module.exports = {
     nsis: {
         oneClick: false,
     },
+    portable: {
+        artifactName: 'suite-mini-${version}-win-${arch}-portable.${ext}',
+    },
     mac: {
         sign: {
             identity: isCodesignBuild ? undefined : '-',
@@ -136,7 +139,7 @@ module.exports = {
         ],
         icon: 'build/static/images/desktop/512x512.png',
         artifactName: 'suite-mini-${version}-win-${arch}.${ext}',
-        target: ['nsis'],
+        target: ['nsis', 'portable'],
         signExts: ['.exe', '.dll'],
         sign: {
             type: 'signtool',

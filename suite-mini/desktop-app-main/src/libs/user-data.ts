@@ -67,6 +67,17 @@ export const clearAppCache = () =>
 const LOCAL_USER_DATA_DIR = '@trezor/suite-desktop-local';
 
 export const initUserData = () => {
+    // electron-builder's portable target sets PORTABLE_EXECUTABLE_DIR for the
+    // child process; keep userData next to the exe so the app is truly portable.
+    const portableDir = process.env.PORTABLE_EXECUTABLE_DIR;
+    if (portableDir) {
+        const userDataDir = path.join(portableDir, 'data');
+        fs.mkdirSync(userDataDir, { recursive: true });
+        app.setPath('userData', userDataDir);
+
+        return;
+    }
+
     if (isDevEnv) {
         const userDataDir = path.join(app.getPath('appData'), LOCAL_USER_DATA_DIR);
         try {
