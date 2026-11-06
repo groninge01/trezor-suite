@@ -20,7 +20,7 @@ const init = (settings: TrezordNodeSettings) =>
          */
         logger: convertILoggerToLog(
             new Logger('debug', {
-                writeToDisk: false,
+                writeToDisk: true,
                 writeToMemory: true,
                 // by default, bridge logs are not printed to console to avoid too much noise. The other reason why this is set to false
                 // is that global logger has logic of turning it on and off depending on 'debug' mode (see logger/config message) and we don't have this implemented here
